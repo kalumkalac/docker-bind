@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+# set -e
 set -u
 set -o pipefail
 
@@ -174,6 +174,9 @@ add_options() {
 			echo "    forwarders {"
 			printf       "${forwarders}"
 			echo "    };"
+		fi
+		if printenv RPZ >/dev/null 2>&1; then
+			echo "    response-policy { zone \"rpz\"; };"
 		fi
 		echo "};"
 	} > "${config_file}"
@@ -564,6 +567,75 @@ else
 	log "info" "Not adding any extra hosts" "${DEBUG_ENTRYPOINT}"
 fi
 
+###
+### RPZ
+###
+if printenv RPZ >/dev/null 2>&1; then
+	# Convert 'com=1.2.3.4[=com],de=2.3.4.5' into newline separated string:
+	#  com=1.2.3.4[=com]
+	#  de=2.3.4.5
+
+	my_cfg="${NAMED_DIR}/devilbox-rpz.conf"
+	conf_path="$( dirname "${my_cfg}" )"
+	zone_file="${my_cfg}.zone"
+
+	# Create config directory if it does not yet exist
+	if [ ! -d "${conf_path}" ]; then
+		mkdir -p "${conf_path}"
+	fi
+
+	echo "include \"${my_cfg}\";" >> "${NAMED_CONF}"
+
+	# Config
+	{
+		# echo "zone \"${domain}\" IN {"
+		echo "zone rpz IN {"
+		echo "    type master;"
+		echo "    allow-query { none; };"
+		echo "    file \"${zone_file}\";"
+		echo "};"
+	} > "${my_cfg}"
+
+	# Forward Zone
+	{
+		echo "\$TTL  300"
+		echo "@   SOA gueant.interieur.gouv.fr. root.elysee.fr ("$( date +'%s' )" 2h 30m 30d 1h)"
+    	echo "    NS gueant.interieur.gouv.fr."
+	} > "${zone_file}"
+
+	
+	echo "${RPZ}" | sed 's/,/\n/g' | while read line ; do
+		my_dom="$( echo "${line}" | awk -F '=' '{print $1}' | xargs )"  # domain
+		my_add="$( echo "${line}" | awk -F '=' '{print $2}' | xargs )"  # IP address
+		my_rev="$( echo "${line}" | awk -F '=' '{print $3}' | xargs )"  # Reverse DNS record
+
+		if [ -n "${my_rev}" ]; then
+			log "info" "Adding wildcard DNS: *.${my_dom} -> ${my_add} (PTR: ${my_rev})" "${DEBUG_ENTRYPOINT}"
+		else
+			log "info" "Adding wildcard DNS: *.${my_dom} -> ${my_add}" "${DEBUG_ENTRYPOINT}"
+		fi
+
+		echo "${my_dom} IN CNAME ${my_add}." >> "${zone_file}"
+	done
+	
+	
+	# named.conf
+	if ! output="$( named-checkconf "${my_cfg}" 2>&1 )"; then
+		log "err" "Configuration failed." "${DEBUG_ENTRYPOINT}"
+		echo "${output}"
+		exit
+	elif [ "${DEBUG_ENTRYPOINT}" -gt "1" ]; then
+		echo "${output}"
+	fi
+	# Zone file
+	if ! output="$( named-checkzone rpz "${zone_file}" 2>&1 )"; then
+		log "err" "Configuration failed." "${DEBUG_ENTRYPOINT}"
+		echo "${output}"
+		exit
+	elif [ "${DEBUG_ENTRYPOINT}" -gt "1" ]; then
+		echo "${output}"
+	fi
+fi
 
 
 ###

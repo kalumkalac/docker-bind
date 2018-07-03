@@ -27,6 +27,7 @@ Bind caching DNS server based on Debian slim with support for DNS forwarders, in
         2. [DOCKER_LOGS](#docker_logs)
         3. [WILDCARD_DNS](#wildcard_dns)
         4. [EXTRA_HOSTS](#extra_hosts)
+        4. [RPZ](#rpz)
         5. [DNSSEC_VALIDATE](#dnssec_validate)
         5. [DNS_FORWARDER](#dns_forwarder)
         6. [TTL_TIME](#ttl_time)
@@ -64,6 +65,7 @@ Bind caching DNS server based on Debian slim with support for DNS forwarders, in
 | `DOCKER_LOGS`      | bool   | `0`       | Set to `1` to log info and queries to Docker logs. |
 | `WILDCARD_DNS`     | string |           | Add one or more tld's, domains or subdomains as catch-all for a specific IP address or CNAME. Reverse DNS is optional and can also be specified. |
 | `EXTRA_HOSTS`      | string |           | Add one or more hosts (CNAME: tld's, domains, subdomains) to map to a specific IP address or CNAME. Reverse DNS is optional and can also be specified. |
+| `RPZ`              | string |           | Add one or more hosts to CNAME to a specific string. |
 | `DNSSEC_VALIDATE`  | string | `no`      | Control the behaviour of DNSSEC validation. The default is to not validate: `no`. Other possible values are: `yes` and `auto`. |
 | `DNS_FORWARDER`    | string |           | Specify a comma separated list of IP addresses as custom DNS resolver. This is useful if your LAN already has a DNS server which adds custom/internal domains and you still want to keep them in this DNS server<br/>Example: `DNS_FORWARDER=8.8.8.8,8.8.4.4` |
 | `TTL_TIME`         | int    | `3600`    | (Time in seconds) See [BIND TTL](http://www.zytrax.com/books/dns/apa/ttl.html) and [BIND SOA](http://www.zytrax.com/books/dns/ch8/soa.html)|
@@ -173,6 +175,17 @@ EXTRA_HOSTS='my.host=example.org'
 # As well as adding reverse DNS from 192.168.0.1 to resolve to tld
 EXTRA_HOSTS='tld=192.168.0.1=tld'
 ```
+
+#### RPZ
+
+This option is similar to `WILDCARD_DNS` and `EXTRA_HOSTS`, except it includes a RPZ policy. Thus, you can specifiy
+a CNAME where your domain should target to.
+
+Example:
+RPZ='domain.tld=another.domain.tld'
+
+Instead of resolving `another.domain.tld` and make `domain.tld` target to this IP by putting an A record
+(which can not be always what you want), the dns server will instead put a CNAME record targeting to `domain.tld`.
 
 #### DNSSEC_VALIDATE
 
