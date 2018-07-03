@@ -591,7 +591,7 @@ if printenv RPZ >/dev/null 2>&1; then
 		# echo "zone \"${domain}\" IN {"
 		echo "zone rpz IN {"
 		echo "    type master;"
-		echo "    allow-query { none; };"
+		echo "    allow-query { any; };"
 		echo "    file \"${zone_file}\";"
 		echo "};"
 	} > "${my_cfg}"
