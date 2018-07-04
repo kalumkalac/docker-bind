@@ -177,6 +177,8 @@ add_options() {
 		fi
 		if printenv RPZ >/dev/null 2>&1; then
 			echo "    response-policy { zone \"rpz\"; };"
+			echo "    recursion yes;"
+			echo "    allow-recursion { any; };"
 		fi
 		echo "};"
 	} > "${config_file}"
@@ -589,9 +591,8 @@ if printenv RPZ >/dev/null 2>&1; then
 	# Config
 	{
 		# echo "zone \"${domain}\" IN {"
-		echo "zone rpz IN {"
+		echo "zone \"rpz\" IN {"
 		echo "    type master;"
-		echo "    allow-query { any; };"
 		echo "    file \"${zone_file}\";"
 		echo "};"
 	} > "${my_cfg}"
